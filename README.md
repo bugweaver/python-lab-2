@@ -1,6 +1,6 @@
 # Лабораторная работа 2. Потоковый анализатор файлов
 
-`streamstats` читает события из CSV и JSONL по одной записи и пишет один JSON-отчёт. Несколько файлов одного формата складываются в общие счётчики.
+`streamstats` читает события из CSV и JSONL по одной записи и пишет один отчёт в JSON или CSV. Несколько файлов одного формата складываются в общие счётчики.
 
 ## Окружение
 
@@ -15,17 +15,17 @@ uv sync
 ```bash
 uv run python -m streamstats analyze examples/events.jsonl \
   --format jsonl --output report.json
-```
-```bash
+
 uv run python -m streamstats analyze examples/events.csv \
-  --format csv --output report.json
+  --format csv --report-format csv --output report.csv
 ```
+
 ```bash
 uv run python -m streamstats analyze a.jsonl b.jsonl \
   --format jsonl --skip-invalid
 ```
 
-`--format` один на весь запуск: `csv` или `jsonl`. Без `--output` отчёт печатается в stdout.
+`--format` один на весь запуск. Встроенные имена: `csv` и `jsonl`. `--report-format` выбирает вид отчёта, по умолчанию `json`. Без `--output` отчёт печатается в stdout.
 
 Битая строка останавливает чтение до записи отчёта. В stderr попадают путь к файлу и номер строки, код выхода -- `2`. `--skip-invalid` пропускает такую строку, пишет `WARNING` через loguru и увеличивает `skipped_lines`.
 
@@ -87,7 +87,8 @@ uv run python -m streamstats analyze examples/events.jsonl \
 | --- | --- |
 | Неверный уровень, пустой `source`, пустая строка JSONL, сломанный JSON | `InvalidEventError` |
 | Метка не в ISO 8601 или без часового пояса | `InvalidTimestampError` |
-| `--format` не `csv` и не `jsonl` | `UnsupportedFormatError` |
+| `--format` не зарегистрирован | `UnsupportedFormatError` |
+| `--report-format` не `json` и не `csv` | `UnsupportedFormatError` |
 | Входного файла нет, `--output` указывает на каталог или на несуществующую папку | `CLIConfigError` |
 
 У `InvalidEventError` и `InvalidTimestampError` в тексте есть путь к файлу и номер строки. Файл не в UTF-8 и прочая ошибка чтения тоже завершают процесс с кодом `2`.
@@ -100,12 +101,30 @@ uv run python -m streamstats analyze examples/events.jsonl \
 - `parsers/csv_parser.py` читает CSV с заголовком, запись за записью.
 - `parsers/jsonl_parser.py` читает JSONL, строка за строкой.
 - `parsers/common.py` проверяет запись и решает, остановить чтение или пропустить строку.
-- `analysis.py` держит один набор счётчиков на все файлы.
-- `report.py` переводит уже посчитанную статистику в JSON.
+- `analysis.py` держит один набор счётчиков на все файлы и реестр парсеров.
+- `report.py` переводит уже посчитанную статистику в JSON или CSV.
 - `errors.py` содержит иерархию ошибок.
 - `constants.py` хранит код выхода, лимит top-5 и уровни, которые считаются ошибочными.
 - `cli.py` разбирает аргументы, проверяет пути и возвращает код выхода.
 - `__main__.py` только запускает `main`, когда пакет вызван как программа.
+
+## Дополнительные задания
+
+Сделаны два пункта.
+
+Реестр парсеров. `register_parser(name, parser)` добавляет входной формат. Функция читает один путь и отдаёт события по одному, с аргументами `path`, `skip_invalid` и `skipped`, как `parse_csv`. Имена `csv` и `jsonl` регистрируются при импорте. `analyze_files` и `--format` берут функцию из этого реестра, поэтому свой формат доступен в том же процессе после регистрации. Повторная регистрация того же имени заменяет функцию. `unregister_parser` убирает её.
+
+CSV-отчёт. `--report-format csv` записывает те же счётчики, что и JSON. Оба формата рендерят один результат `build_report`, входные файлы второй раз не читаются. Столбцы: `section`, `name`, `value`. Для примера выше начало файла такое:
+
+```csv
+section,name,value
+summary,total_events,5
+summary,skipped_lines,0
+summary,first_timestamp,2026-10-19T10:00:00+00:00
+summary,last_timestamp,2026-10-19T10:04:00+00:00
+level,DEBUG,0
+level,INFO,2
+```
 
 ## Проверка
 
