@@ -1,0 +1,4 @@
+timestamp,level,source,message
+2026-10-20T10:00:00Z,INFO,api,Server started
+2026-10-20T10:01:00Z,ERROR,database,Connection failed
+2026-10-20T10:02:00Z,WARNING,auth,Invalid password
