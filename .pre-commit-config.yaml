@@ -5,6 +5,8 @@ repos:
       - id: mypy
         args: [--show-error-codes, --pretty]
         additional_dependencies:
+          - pydantic>=2.14.1
+          - loguru>=0.7.3
           - types-requests
           - types-PyYAML
 
