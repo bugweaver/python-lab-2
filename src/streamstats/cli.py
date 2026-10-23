@@ -22,6 +22,7 @@ class _AnalyzeCommand:
     inputs: list[Path]
     input_format: str
     output: Path | None
+    report_format: str
     skip_invalid: bool
 
 
@@ -49,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     analyze = subparsers.add_parser(
         "analyze",
-        help="Analyze event files and write a JSON report.",
+        help="Analyze event files and write a JSON or CSV report.",
     )
     analyze.add_argument(
         "inputs",
@@ -61,12 +62,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--format",
         required=True,
         dest="input_format",
-        help="Input format for every file: csv or jsonl.",
+        help="Registered input format. Built-in names are csv and jsonl.",
     )
     analyze.add_argument(
         "--output",
         type=Path,
-        help="JSON report path. The report is printed when this is omitted.",
+        help="Report path. The report is printed when this is omitted.",
+    )
+    analyze.add_argument(
+        "--report-format",
+        default="json",
+        dest="report_format",
+        help="Report format: json or csv. Defaults to json.",
     )
     analyze.add_argument(
         "--skip-invalid",
@@ -90,9 +97,9 @@ def _execute(command: _AnalyzeCommand) -> None:
         skip_invalid=command.skip_invalid,
     )
     if command.output is None:
-        sys.stdout.write(render_report(stats))
+        sys.stdout.write(render_report(stats, command.report_format))
         return
-    write_report(stats, command.output)
+    write_report(stats, command.output, command.report_format)
 
 
 def _command(args: argparse.Namespace) -> _AnalyzeCommand:
@@ -103,6 +110,7 @@ def _command(args: argparse.Namespace) -> _AnalyzeCommand:
         inputs=_input_paths(args.inputs),
         input_format=_input_format(args.input_format),
         output=_output_path(args.output),
+        report_format=_report_format(args.report_format),
         skip_invalid=bool(args.skip_invalid),
     )
 
@@ -144,6 +152,13 @@ def _input_format(value: object) -> str:
     if isinstance(value, str) and value:
         return value
     raise CLIConfigError("Input format must be a non-empty string")
+
+
+def _report_format(value: object) -> str:
+    """Return the report format name passed on the command line."""
+    if isinstance(value, str) and value:
+        return value
+    raise CLIConfigError("Report format must be a non-empty string")
 
 
 def _fail(message: str) -> NoReturn:
