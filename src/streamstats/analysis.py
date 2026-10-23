@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import Protocol
 
 from streamstats.constants import ERROR_LEVELS, TOP_ERROR_SOURCE_LIMIT
-from streamstats.errors import UnsupportedFormatError
+from streamstats.errors import StreamStatsError, UnsupportedFormatError
 from streamstats.models import Event
 from streamstats.parsers import SkipCounter, parse_csv, parse_jsonl
 
 
-class _EventParser(Protocol):
-    """A streaming parser selected by the ``--format`` value."""
+class EventParser(Protocol):
+    """A streaming parser selected by an input format name."""
 
     def __call__(
         self,
@@ -27,10 +27,7 @@ class _EventParser(Protocol):
         ...
 
 
-_PARSERS: dict[str, _EventParser] = {
-    "csv": parse_csv,
-    "jsonl": parse_jsonl,
-}
+_PARSERS: dict[str, EventParser] = {}
 
 
 @dataclass
@@ -91,9 +88,31 @@ def analyze_files(
     return stats
 
 
-def _parser_for(input_format: str) -> _EventParser:
+def register_parser(format_name: str, parser: EventParser) -> None:
+    """Register a streaming parser under ``format_name``.
+    """
+    if not format_name.strip():
+        raise StreamStatsError("Parser name must not be empty")
+    _PARSERS[format_name] = parser
+
+
+def unregister_parser(format_name: str) -> None:
+    """Remove a parser from the registry if it is present."""
+    _PARSERS.pop(format_name, None)
+
+
+def registered_formats() -> tuple[str, ...]:
+    """Return registered input format names in registration order."""
+    return tuple(_PARSERS)
+
+
+def _parser_for(input_format: str) -> EventParser:
     """Return the streaming parser registered for ``input_format``."""
     try:
         return _PARSERS[input_format]
     except KeyError as exc:
         raise UnsupportedFormatError(input_format) from exc
+
+
+register_parser("csv", parse_csv)
+register_parser("jsonl", parse_jsonl)
