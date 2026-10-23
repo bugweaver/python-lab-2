@@ -1,0 +1,5 @@
+{"timestamp":"2026-10-19T10:00:00Z","level":"INFO","source":"api","message":"Server started"}
+{"timestamp":"2026-10-19T10:01:00Z","level":"ERROR","source":"database","message":"Connection failed"}
+{"timestamp":"2026-10-19T10:02:00Z","level":"INFO","source":"api","message":"Request received"}
+{"timestamp":"2026-10-19T10:03:00Z","level":"CRITICAL","source":"database","message":"Database unavailable"}
+{"timestamp":"2026-10-19T10:04:00Z","level":"WARNING","source":"auth","message":"Invalid username or password"}
